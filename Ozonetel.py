@@ -2,8 +2,20 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import StaleElementReferenceException
 from datetime import datetime
 import time
+import os
+from dotenv import load_dotenv
+
+# ---------------- LOAD ENV ---------------- #
+load_dotenv()
+
+USERNAME = os.getenv("OZONETEL_USERNAME")
+PASSWORD = os.getenv("OZONETEL_PASSWORD")
+
+if not USERNAME or not PASSWORD:
+    raise ValueError("❌ OZONETEL_USERNAME or OZONETEL_PASSWORD not set in .env")
 
 # ---------------- CONFIG ---------------- #
 LOGIN_URL = "https://cloudagent.ozonetel.com/give"
@@ -11,9 +23,6 @@ CALL_DETAILS_URL = "https://cloudagent.ozonetel.com/reports/call-details"
 IVR_URL = "https://cloudagent.ozonetel.com/reports/ivr-feedback"
 AGENT_LOGIN_URL = "https://cloudagent.ozonetel.com/reports/agent-login-details"
 DOWNLOADED_REPORTS_URL = "https://cloudagent.ozonetel.com/reports/downloaded_reports"
-
-USERNAME = "p.sutharsun@starhealth.in"
-PASSWORD = "George@2025"
 # ---------------------------------------- #
 
 driver = webdriver.Chrome()
@@ -24,23 +33,31 @@ wait = WebDriverWait(driver, 30)
 driver.get(LOGIN_URL)
 
 try:
-    wait.until(EC.element_to_be_clickable(
-        (By.XPATH, "//span[normalize-space()='Login']")
-    )).click()
+    wait.until(
+        EC.element_to_be_clickable(
+            (By.XPATH, "//span[normalize-space()='Login']")
+        )
+    ).click()
 except:
     pass
 
-wait.until(EC.presence_of_element_located(
-    (By.XPATH, "//input[@placeholder='Enter User Name']")
-)).send_keys(USERNAME)
+wait.until(
+    EC.presence_of_element_located(
+        (By.XPATH, "//input[@placeholder='Enter User Name']")
+    )
+).send_keys(USERNAME)
 
-wait.until(EC.presence_of_element_located(
-    (By.XPATH, "//input[@placeholder='Enter Password']")
-)).send_keys(PASSWORD)
+wait.until(
+    EC.presence_of_element_located(
+        (By.XPATH, "//input[@placeholder='Enter Password']")
+    )
+).send_keys(PASSWORD)
 
-wait.until(EC.element_to_be_clickable(
-    (By.XPATH, "//button[normalize-space()='Login']")
-)).click()
+wait.until(
+    EC.element_to_be_clickable(
+        (By.XPATH, "//button[normalize-space()='Login']")
+    )
+).click()
 
 print("✅ Logged in")
 time.sleep(8)
@@ -52,6 +69,7 @@ def switch_to_iframe():
     if iframes:
         driver.switch_to.frame(iframes[0])
 
+
 def click_generate():
     generate_btn = wait.until(
         EC.element_to_be_clickable(
@@ -62,10 +80,12 @@ def click_generate():
     print("✅ Generate clicked")
     time.sleep(20)
 
+
 def click_download_csv():
     arrow_svg = wait.until(
         EC.presence_of_element_located(
-            (By.XPATH, "//span[normalize-space()='Yesterday']/following::*[name()='svg'][2]")
+            (By.XPATH,
+             "//span[normalize-space()='Yesterday']/following::*[name()='svg'][2]")
         )
     )
     driver.execute_script("""
@@ -92,7 +112,9 @@ click_generate()
 click_download_csv()
 
 detailed_btn = wait.until(
-    EC.presence_of_element_located((By.XPATH, "//*[normalize-space()='Detailed View']"))
+    EC.presence_of_element_located(
+        (By.XPATH, "//*[normalize-space()='Detailed View']")
+    )
 )
 driver.execute_script("arguments[0].click();", detailed_btn)
 print("✅ Detailed View clicked")
@@ -131,21 +153,16 @@ click_download_csv()
 print("✅ Agent Login Details CSV downloaded twice")
 
 # ---------------- DOWNLOADED REPORTS ---------------- #
-
 driver.get(DOWNLOADED_REPORTS_URL)
-wait = WebDriverWait(driver, 30)
 
-# ✅ XPath for CSV label
 CSV_XPATH = "//label[contains(normalize-space(), 'CSV')]"
 
-# ✅ Wait until at least one CSV label is visible
 csv_labels = wait.until(
     EC.visibility_of_all_elements_located((By.XPATH, CSV_XPATH))
 )
 
 print(f"✅ Found {len(csv_labels)} CSV label(s)")
 
-# ✅ Click all CSV labels safely
 for i in range(len(csv_labels)):
     try:
         csvs = driver.find_elements(By.XPATH, CSV_XPATH)
@@ -158,14 +175,13 @@ for i in range(len(csv_labels)):
 
         wait.until(EC.element_to_be_clickable(csv_label))
         driver.execute_script("arguments[0].click();", csv_label)
-
         print(f"✅ Clicked CSV #{i + 1}")
-        time.sleep(2)  # allow download to start
+
+        time.sleep(2)
 
     except StaleElementReferenceException:
         print(f"🔁 Retrying CSV #{i + 1}")
         time.sleep(1)
 
 print("✅ All CSV downloads completed")
-
-
+driver.quit()
